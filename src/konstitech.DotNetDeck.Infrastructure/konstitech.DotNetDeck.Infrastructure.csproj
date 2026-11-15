@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>konstitech.DotNetDeck.Infrastructure</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../konstitech.DotNetDeck.Application/konstitech.DotNetDeck.Application.csproj" />
+  </ItemGroup>
+</Project>

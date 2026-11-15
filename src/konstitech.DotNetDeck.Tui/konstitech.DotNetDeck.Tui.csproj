@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>konstitech.DotNetDeck.Tui</RootNamespace>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>dotnet-deck</AssemblyName>
+    <PublishAot>true</PublishAot>
+    <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
+    <IlcTreatWarningsAsErrors>true</IlcTreatWarningsAsErrors>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Terminal.Gui" />
+    <ProjectReference Include="../konstitech.DotNetDeck.Infrastructure/konstitech.DotNetDeck.Infrastructure.csproj" />
+    <InternalsVisibleTo Include="konstitech.DotNetDeck.Foundation.Tests" />
+  </ItemGroup>
+</Project>

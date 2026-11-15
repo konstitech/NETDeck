@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>konstitech.DotNetDeck.Foundation.Tests</RootNamespace>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <IsAotCompatible>false</IsAotCompatible>
+    <PublishAot>false</PublishAot>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="TUnit" PrivateAssets="all" />
+    <PackageReference Include="NSubstitute" />
+    <ProjectReference Include="../../src/konstitech.DotNetDeck.Tui/konstitech.DotNetDeck.Tui.csproj" />
+  </ItemGroup>
+</Project>

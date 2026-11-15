@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/konstitech.DotNetDeck.Domain/konstitech.DotNetDeck.Domain.csproj" />
+    <Project Path="src/konstitech.DotNetDeck.Application/konstitech.DotNetDeck.Application.csproj" />
+    <Project Path="src/konstitech.DotNetDeck.Infrastructure/konstitech.DotNetDeck.Infrastructure.csproj" />
+    <Project Path="src/konstitech.DotNetDeck.Tui/konstitech.DotNetDeck.Tui.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/konstitech.DotNetDeck.Foundation.Tests/konstitech.DotNetDeck.Foundation.Tests.csproj" />
+  </Folder>
+</Solution>
