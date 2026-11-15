@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>konstitech.DotNetDeck.Application</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../konstitech.DotNetDeck.Domain/konstitech.DotNetDeck.Domain.csproj" />
+  </ItemGroup>
+</Project>

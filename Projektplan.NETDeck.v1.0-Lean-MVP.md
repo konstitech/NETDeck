@@ -9,12 +9,12 @@
 | Parameter | Festlegung |
 | :--- | :--- |
 | **Produktname** | `.NETDeck` |
-| **Zed Extension ID** | `dotnet-deck` (`authors = ["kosteash"]`) |
+| **Zed Extension ID** | `dotnet-deck` (`authors = ["konstitech"]`) |
 | **CLI-Binary (NativeAOT)** | `dotnet-deck` (auch via `dotnet deck` aufrufbar) |
-| **C# Root Namespace** | `Kosteash.DotNetDeck` (`Domain`, `Application`, `Infrastructure`, `Tui`) |
+| **C# Root Namespace** | `konstitech.DotNetDeck` (`Domain`, `Application`, `Infrastructure`, `Tui`) |
 | **UI-Paradigma** | **Option A:** Mausbedienbare TUI im integrierten Zed-Terminal (`Terminal.Gui` v2) |
 | **Tech-Stack** | .NET 10 (C# 14, NativeAOT) + Rust (`zed_extension_api` -> `wasm32-wasip1`) |
-| **Lizenz** | `Apache-2.0` (`Copyright 2026 kosteash`) |
+| **Lizenz** | `Apache-2.0` (`Copyright 2026 konstitech`) |
 | **Ziel-Latenz (Cold-Start)** | $< 15\text{ ms}$ vom Shortcut (`Alt+R`) bis zur interaktiven Oberfläche |
 
 ---
@@ -77,10 +77,10 @@ dotnet-deck/
 │   └── csharp/
 │       └── runnables.scm                    # Klickbare Gutter-Icons für Main() & Unit-Tests
 └── src/
-    ├── Kosteash.DotNetDeck.Domain/          # Records, Entities & OperationOutcome<T>
-    ├── Kosteash.DotNetDeck.Application/     # CQRS-Interfaces & Use-Cases (ohne Async-Suffix)
-    ├── Kosteash.DotNetDeck.Infrastructure/  # .slnx/CPM-Scanner, NuGet-Client, ProcessSupervisor
-    └── Kosteash.DotNetDeck.Tui/             # Terminal.Gui v2 Views & NativeAOT Entry-Point
+    ├── konstitech.DotNetDeck.Domain/          # Records, Entities & OperationOutcome<T>
+    ├── konstitech.DotNetDeck.Application/     # CQRS-Interfaces & Use-Cases (ohne Async-Suffix)
+    ├── konstitech.DotNetDeck.Infrastructure/  # .slnx/CPM-Scanner, NuGet-Client, ProcessSupervisor
+    └── konstitech.DotNetDeck.Tui/             # Terminal.Gui v2 Views & NativeAOT Entry-Point
 ```
 
 ---

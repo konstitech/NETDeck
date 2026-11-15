@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>konstitech.DotNetDeck.Domain</RootNamespace>
+  </PropertyGroup>
+</Project>
