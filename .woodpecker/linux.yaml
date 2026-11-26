@@ -1,0 +1,48 @@
+when:
+  event: [push, pull_request]
+
+labels:
+  platform: linux/amd64
+  backend: docker
+
+concurrency:
+  limit: 1
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git:2.12.1@sha256:b8d2401997be68ec25d62bd753fe5d30236e029fe007a5e823177e0e485ae205
+    settings:
+      partial: false
+      depth: 0
+      lfs: false
+      recursive: false
+
+steps:
+  - name: build-test-publish
+    image: ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5
+    environment:
+      DEBIAN_FRONTEND: "noninteractive"
+      DOTNET_ROOT: "/opt/dotnet"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      GIT_TERMINAL_PROMPT: "0"
+    commands:
+      - apt-get update
+      - apt-get install -y --no-install-recommends ca-certificates curl git clang zlib1g-dev file golang-go libc6 libgcc-s1 libgssapi-krb5-2 libicu74 libssl3t64 libstdc++6 tzdata
+      - curl --fail --silent --show-error --location --connect-timeout 30 --max-time 300 --output /tmp/dotnet-sdk.tar.gz https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.115/dotnet-sdk-10.0.115-linux-x64.tar.gz
+      - "printf '%s  %s\\n' '01bf048cf0495a7ce76be07b9623d385c9d9f172237d0267ded25c31f4b19604d74f1d328d0ee5fe6bcfb23cb20c41fb072c9b84fce6582c20edb1e3d93ea012' '/tmp/dotnet-sdk.tar.gz' | sha512sum --check --status"
+      - mkdir -p /opt/dotnet
+      - tar -xzf /tmp/dotnet-sdk.tar.gz -C /opt/dotnet
+      - rm /tmp/dotnet-sdk.tar.gz
+      - export PATH="/opt/dotnet:$$PATH"
+      - test "$$(dotnet --version)" = "10.0.115"
+      - git rev-parse --is-inside-work-tree
+      - go test ./tests/infra/...
+      - dotnet restore dotnet-deck.slnx
+      - dotnet build dotnet-deck.slnx -c Release --no-restore
+      - dotnet run --project tests/konstitech.DotNetDeck.Foundation.Tests/konstitech.DotNetDeck.Foundation.Tests.csproj -c Release --no-restore -- --treenode-filter "/*/konstitech.DotNetDeck.Foundation.Tests/*/*"
+      - dotnet publish src/konstitech.DotNetDeck.Tui/konstitech.DotNetDeck.Tui.csproj -c Release -r linux-x64 -o artifacts/linux-x64
+      - test -x artifacts/linux-x64/dotnet-deck
+      - file artifacts/linux-x64/dotnet-deck
+      - >-
+        test "$$(od -An -tx1 -N6 artifacts/linux-x64/dotnet-deck | tr -d '[:space:]')" = 7f454c460201 && test "$$(od -An -tx1 -j18 -N2 artifacts/linux-x64/dotnet-deck | tr -d '[:space:]')" = 3e00

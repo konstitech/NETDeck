@@ -6,7 +6,7 @@ This repository initializes the four planned .NET layer projects and a real Term
 
 ## Prerequisites
 
-Use .NET SDK 10.0.115 or a stable 10.0.1xx patch accepted by `global.json`, with C# 14. The UI uses Terminal.Gui 2.5.0 and requires interactive standard input and output. Git is required for repository contract tests, not for running the product binary.
+Use .NET SDK 10.0.115 or a stable 10.0.1xx patch accepted by `global.json`, with C# 14. The UI uses Terminal.Gui 2.5.0 and requires interactive standard input and output. Git is required for repository contract tests, not for running the product binary. Go 1.22 or later is required for the Woodpecker preflight and infrastructure tests.
 
 NativeAOT additionally needs platform-native build tools: on Ubuntu install `clang` and `zlib1g-dev`; on macOS select Xcode Command Line Tools (`xcode-select -p`); on Windows install Visual Studio's Desktop development with C++ workload. Publish on a host compatible with the target RID.
 
@@ -38,6 +38,7 @@ Terminal.Gui declares AOT compatibility upstream, but its own project and Native
 ## Verification
 
 ```sh
+go test ./tests/infra/...
 dotnet restore dotnet-deck.slnx
 dotnet run --project tests/konstitech.DotNetDeck.Foundation.Tests/konstitech.DotNetDeck.Foundation.Tests.csproj -c Release --no-restore -- --treenode-filter "/*/konstitech.DotNetDeck.Foundation.Tests/*/*"
 dotnet publish src/konstitech.DotNetDeck.Tui/konstitech.DotNetDeck.Tui.csproj -c Release -r linux-x64 -o artifacts/linux-x64
@@ -53,6 +54,10 @@ Real-terminal verification is a separate, currently unverified gate. On Linux re
 ## Plan review
 
 The [original project plan](Projektplan.NETDeck.v1.0-Lean-MVP.md) specifies .NET 10 and C# 14, not a .NET 11 override. Its filename was made portable without changing its authorized contents. Its under-15-ms shortcut-to-interactive goal is unmeasured, not an initialization result. Zed release ownership, download hooks, key bindings, focus return and gutter integration require later API feasibility design; no extension scaffold is shipped. A future CLI parser must verify the plan's combined outdated/vulnerable syntax. Future persistence and log paths must be cross-platform rather than copying Linux paths to Windows or macOS.
+
+## Woodpecker Linux CI
+
+See the [operator runbook](docs/woodpecker-linux.md) for the self-hosted Linux setup. Merges into `main` produce a GitHub `push` delivered through the native Woodpecker webhook to the local agent; other branch pushes and pull requests remain eligible. Automatic execution requires public HTTPS ingress, OAuth and repository activation, online services, and is subject to approval and skip directives. GitHub Actions is independent. Administrator setup and live acceptance are not performed by this repository change.
 
 ## License
 

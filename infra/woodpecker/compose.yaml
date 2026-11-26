@@ -1,0 +1,132 @@
+name: netdeck-woodpecker
+
+services:
+  woodpecker-server:
+    image: woodpeckerci/woodpecker-server:v3.20.1@sha256:0f31560e29d67ec4a06d6eeee4bac38d2a2697a6a741b8a0db3998180f3a3517
+    platform: linux/amd64
+    user: "1000:1000"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - server-data:/var/lib/woodpecker
+    networks: [control, egress]
+    secrets: [github-secret, agent-secret]
+    environment:
+      WOODPECKER_HOST: ${WOODPECKER_HOST:?Set WOODPECKER_HOST to your public HTTPS origin}
+      WOODPECKER_ADMIN: ${WOODPECKER_ADMIN:?Set WOODPECKER_ADMIN to your GitHub login}
+      WOODPECKER_GITHUB_CLIENT: ${WOODPECKER_GITHUB_CLIENT:?Set WOODPECKER_GITHUB_CLIENT to your OAuth client ID}
+      WOODPECKER_GITHUB: "true"
+      WOODPECKER_OPEN: "false"
+      WOODPECKER_REPO_OWNERS: "konstitech"
+      WOODPECKER_SERVER_ADDR: ":8000"
+      WOODPECKER_GRPC_ADDR: ":9000"
+      WOODPECKER_LOG_LEVEL: "info"
+      WOODPECKER_DEBUG_PRETTY: "false"
+      WOODPECKER_DEFAULT_PIPELINE_TIMEOUT: "30"
+      WOODPECKER_MAX_PIPELINE_TIMEOUT: "30"
+      WOODPECKER_GITHUB_SECRET_FILE: "/run/secrets/github-secret"
+      WOODPECKER_AGENT_SECRET_FILE: "/run/secrets/agent-secret"
+    healthcheck:
+      test: ["CMD", "/bin/woodpecker-server", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+  woodpecker-agent:
+    image: woodpeckerci/woodpecker-agent:v3.20.1@sha256:a7d7299a13add0b3936fa0ac9ed23507fe283a7fc7d9596c4289d7e8206541eb
+    platform: linux/amd64
+    # Docker socket access is root-equivalent; use a dedicated trusted worker.
+    user: "0:0"
+    # The capability-free agent needs group read access to the UID-1000 bind-mounted secret.
+    group_add: ["${WOODPECKER_AGENT_SECRET_GID:-1000}"]
+    command: ["agent"]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    volumes:
+      - agent-config:/etc/woodpecker
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks: [control]
+    secrets: [agent-secret]
+    depends_on:
+      woodpecker-server:
+        condition: service_healthy
+    environment:
+      WOODPECKER_SERVER: "woodpecker-server:9000"
+      WOODPECKER_BACKEND: "docker"
+      WOODPECKER_AGENT_SECRET_FILE: "/run/secrets/agent-secret"
+      WOODPECKER_AGENT_CONFIG_FILE: "/etc/woodpecker/agent.conf"
+      WOODPECKER_MAX_WORKFLOWS: "1"
+      WOODPECKER_GRPC_SECURE: "false"
+      WOODPECKER_GRPC_SKIP_VERIFY: "false"
+      WOODPECKER_HEALTHCHECK: "true"
+      WOODPECKER_HEALTHCHECK_ADDR: ":3000"
+      WOODPECKER_LOG_LEVEL: "info"
+      WOODPECKER_DEBUG_PRETTY: "false"
+      WOODPECKER_BACKEND_DOCKER_LIMIT_MEM: "6442450944"
+      WOODPECKER_BACKEND_DOCKER_LIMIT_MEM_SWAP: "6442450944"
+      WOODPECKER_BACKEND_DOCKER_LIMIT_CPU_QUOTA: "200000"
+      WOODPECKER_BACKEND_DOCKER_STOP_TIMEOUT: "30"
+    healthcheck:
+      test: ["CMD", "/bin/woodpecker-agent", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.10"
+          memory: 64M
+
+volumes:
+  server-data:
+  agent-config:
+
+networks:
+  control:
+    driver: bridge
+    internal: true
+  egress:
+    driver: bridge
+
+secrets:
+  github-secret:
+    file: ./secrets/github-secret
+  agent-secret:
+    file: ./secrets/agent-secret

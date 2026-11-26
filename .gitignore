@@ -8,3 +8,6 @@
 *.suo
 .DS_Store
 .omp-pipelines/
+/infra/woodpecker/.env
+/infra/woodpecker/secrets/
+/infra/woodpecker/backups/
