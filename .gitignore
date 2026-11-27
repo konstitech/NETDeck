@@ -11,3 +11,5 @@
 /infra/woodpecker/.env
 /infra/woodpecker/secrets/
 /infra/woodpecker/backups/
+.omp/references/dotnet-codebase-full.md
+.omp/rules/dotnet-codebase-map.md
