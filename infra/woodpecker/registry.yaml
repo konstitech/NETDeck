@@ -1,0 +1,22 @@
+version: 0.1
+log:
+  level: info
+  formatter: json
+  accesslog:
+    disabled: true
+  fields:
+    service: registry
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  delete:
+    enabled: false
+http:
+  addr: 0.0.0.0:5000
+  relativeurls: true
+  draintimeout: 20s
+health:
+  storagedriver:
+    enabled: true
+    interval: 5s
+    threshold: 1
