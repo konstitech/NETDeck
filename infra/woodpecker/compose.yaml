@@ -83,9 +83,12 @@ services:
     depends_on:
       woodpecker-server:
         condition: service_healthy
+      registry:
+        condition: service_healthy
     environment:
       WOODPECKER_SERVER: "woodpecker-server:9000"
       WOODPECKER_BACKEND: "docker"
+      WOODPECKER_BACKEND_DOCKER_NETWORK: "${COMPOSE_PROJECT_NAME}_registry"
       WOODPECKER_AGENT_SECRET_FILE: "/run/secrets/agent-secret"
       WOODPECKER_AGENT_CONFIG_FILE: "/etc/woodpecker/agent.conf"
       WOODPECKER_MAX_WORKFLOWS: "1"
@@ -114,9 +117,56 @@ services:
           cpus: "0.10"
           memory: 64M
 
+  registry:
+    image: docker.io/library/registry:3.1.2@sha256:52b489ad8e6f40d1a676702e3ce398ec796ce38f08fbb786e1f324baa12d84b8
+    platform: linux/amd64
+    user: "1000:1000"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+    configs:
+      - source: registry-config
+        target: /etc/distribution/config.yml
+    networks: [registry, registry-ingress]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          (/bin/busybox rm -f /var/lib/registry/.compose-health-probe &&
+          printf '%s' ok > /var/lib/registry/.compose-health-probe &&
+          /bin/busybox rm -f /var/lib/registry/.compose-health-probe) ||
+          { echo 'registry-health: storage-write'; exit 1; };
+          /bin/busybox wget -q -T 2 -O /dev/null http://127.0.0.1:5000/v2/ ||
+          { echo 'registry-health: v2'; exit 1; }
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.10"
+          memory: 64M
+
 volumes:
   server-data:
   agent-config:
+  registry-data:
 
 networks:
   control:
@@ -124,6 +174,20 @@ networks:
     internal: true
   egress:
     driver: bridge
+  registry:
+    driver: bridge
+    internal: true
+    enable_ipv6: false
+  registry-ingress:
+    driver: bridge
+    enable_ipv6: false
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: "nat"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+
+configs:
+  registry-config:
+    file: ./registry.yaml
 
 secrets:
   github-secret:
