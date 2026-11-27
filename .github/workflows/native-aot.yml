@@ -30,18 +30,97 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+          fetch-depth: ${{ matrix.rid == 'linux-x64' && '0' || '1' }}
+          ref: ${{ matrix.rid == 'linux-x64' && startsWith(github.ref, 'refs/tags/') && github.sha || '' }}
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           dotnet-version: 10.0.115
+      - name: Select Linux delivery
+        id: select_linux_delivery
+        if: matrix.rid == 'linux-x64'
+        shell: bash
+        run: |
+          shopt -u nocasematch
+          if [[ "${GITHUB_EVENT_NAME:-}" == push && "${GITHUB_REF:-}" == refs/heads/main ]]; then printf 'deliver=true\n'; else printf 'deliver=false\n'; fi >> "$GITHUB_OUTPUT"
       - name: Install Linux native prerequisites
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
       - name: Check macOS developer tools
         if: runner.os == 'macOS'
         run: xcode-select -p
+      - name: Test Go infrastructure
+        if: matrix.rid == 'linux-x64'
+        shell: bash
+        run: GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off go test -timeout=60s ./tests/infra/...
       - name: Restore
         run: dotnet restore dotnet-deck.slnx
+      - name: Build Linux Release
+        if: matrix.rid == 'linux-x64'
+        shell: bash
+        run: |
+          test "$(dotnet --version)" = 10.0.115
+          dotnet build dotnet-deck.slnx -c Release --no-restore
       - name: Test foundation
         run: dotnet run --project tests/konstitech.DotNetDeck.Foundation.Tests/konstitech.DotNetDeck.Foundation.Tests.csproj -c Release --no-restore -- --treenode-filter "/*/konstitech.DotNetDeck.Foundation.Tests/*/*"
+      - name: Publish Linux native executable
+        if: matrix.rid == 'linux-x64'
+        shell: bash
+        run: |
+          NETDECK_CI_DIR=$(mktemp -d "$RUNNER_TEMP/netdeck-native.XXXXXXXX")
+          printf 'NETDECK_CI_DIR=%s\n' "$NETDECK_CI_DIR" >> "$GITHUB_ENV"
+          dotnet publish src/konstitech.DotNetDeck.Tui/konstitech.DotNetDeck.Tui.csproj -c Release -r linux-x64 -o "$NETDECK_CI_DIR/publish"
       - name: Publish native executable
+        if: matrix.rid != 'linux-x64'
         run: dotnet publish src/konstitech.DotNetDeck.Tui/konstitech.DotNetDeck.Tui.csproj -c Release -r ${{ matrix.rid }} -o artifacts/${{ matrix.rid }}
+      - name: Verify Linux NativeAOT
+        if: matrix.rid == 'linux-x64'
+        shell: bash
+        run: |
+          bash .github/scripts/linux-artifact.sh verify-elf "$NETDECK_CI_DIR/publish"
+          file -- "$NETDECK_CI_DIR/publish/dotnet-deck"
+      - name: Package Linux artifact
+        id: package_linux
+        if: matrix.rid == 'linux-x64'
+        shell: bash
+        run: bash .github/scripts/linux-artifact.sh package "$NETDECK_CI_DIR/publish" "$NETDECK_CI_DIR/staging" >> "$GITHUB_OUTPUT"
+      - name: Upload Linux artifact
+        id: upload_linux
+        if: ${{ success() && matrix.rid == 'linux-x64' && github.repository == 'konstitech/NETDeck' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.select_linux_delivery.outputs.deliver == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ steps.package_linux.outputs.artifact_name }}
+          path: |
+            ${{ env.NETDECK_CI_DIR }}/staging/dotnet-deck.tar.gz
+            ${{ env.NETDECK_CI_DIR }}/staging/dotnet-deck.tar.gz.sha256
+          if-no-files-found: error
+          overwrite: false
+          retention-days: 14
+          compression-level: 0
+          include-hidden-files: false
+      - name: Validate upload receipt
+        if: ${{ success() && matrix.rid == 'linux-x64' && github.repository == 'konstitech/NETDeck' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.select_linux_delivery.outputs.deliver == 'true' }}
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload_linux.outputs.artifact-id }}
+        run: |
+          bash .github/scripts/linux-artifact.sh validate-id "$ARTIFACT_ID"
+          rm -- "$NETDECK_CI_DIR/staging/dotnet-deck.tar.gz" "$NETDECK_CI_DIR/staging/dotnet-deck.tar.gz.sha256"
+          rmdir -- "$NETDECK_CI_DIR/staging"
+          mkdir -m 0700 -- "$NETDECK_CI_DIR/readback"
+      - name: Download Linux artifact
+        if: ${{ success() && matrix.rid == 'linux-x64' && github.repository == 'konstitech/NETDeck' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.select_linux_delivery.outputs.deliver == 'true' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ steps.upload_linux.outputs.artifact-id }}
+          path: ${{ env.NETDECK_CI_DIR }}/readback
+          merge-multiple: true
+      - name: Verify Linux artifact readback
+        if: ${{ success() && matrix.rid == 'linux-x64' && github.repository == 'konstitech/NETDeck' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.select_linux_delivery.outputs.deliver == 'true' }}
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload_linux.outputs.artifact-id }}
+          ARTIFACT_NAME: ${{ steps.package_linux.outputs.artifact_name }}
+          EXPECTED_ARCHIVE_SHA256: ${{ steps.package_linux.outputs.archive_sha256 }}
+        run: |
+          bash .github/scripts/linux-artifact.sh verify-readback "$NETDECK_CI_DIR/readback" "$EXPECTED_ARCHIVE_SHA256"
+          printf 'netdeck_artifact status=verified id=%s name=%s sha256=%s\n' "$ARTIFACT_ID" "$ARTIFACT_NAME" "$EXPECTED_ARCHIVE_SHA256"
